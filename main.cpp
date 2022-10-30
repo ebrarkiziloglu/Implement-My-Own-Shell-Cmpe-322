@@ -5,26 +5,44 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <deque>
 
 using namespace std; 
 #define MAX_COMMAND_LEN 300
-char command[MAX_COMMAND_LEN];
-bool isterminated = false;
-string delimiter = " ";
-string dividor = ">";
-string username = getenv("USER"); 
+char command[MAX_COMMAND_LEN];      // command line to be read from the shell
+bool isterminated = false;          // if the "exit" command runs, the shell terminates
+string delimiter = " ";             // separates the command from its arguments
+string dividor = ">";               // separates the file names in "printfile" command
+string username = getenv("USER");   
 
 void readLineByLine(string pathToFile);
 void redirectFile(string command);
 
 int main() {
-    username.append(" >>> ");
+    username.append(" >>> ");           // creates the shell welcome text
+    deque<string> history;              // keeps history of the commands
     
-    while(! isterminated){
-        cout << username; 
-        cin.getline(command, MAX_COMMAND_LEN);
-        string command_str = command;
+    while(! isterminated){              // runs in loop untill "exit" command is executed
+        while(history.size() > 15) {    // only keeps the last 15 commands in the history
+            history.pop_front();
+        }
+        cout << username;               // starts the shell, ready to take command
+        cin.getline(command, MAX_COMMAND_LEN);   // reads the command
+        string command_str = command;            // converts command to the string
+        
+        // Remove the redundant whitespaces from the beginning and the end of the command:
+        while(command_str.find_first_of(" ") == 0) {
+            command_str = command_str.substr(1, command_str.size()-1);
+        }
+        while(command_str.find_last_of(" ") == 0) {
+            command_str = command_str.substr(0, command_str.size()-1);
+        }
+        if(command_str.compare("") != 0) {      // if the command is not empty, adds it to the history
+            history.push_back(command_str);
+        }
+        // if the command includes a whitespace: we need the first word to determine the type of the command:
         string command_prefix = command_str.substr(0, command_str.find(delimiter));
+        
         if(command_str.compare("listdir") == 0) {
             system("ls");
         }
@@ -36,30 +54,41 @@ int main() {
             cout << endl;
         }
         else if(command_prefix.compare("printfile") == 0) {       
-
-            if(command_str.find(dividor) == string::npos) { // printfile (fileName)
-                readLineByLine(command_str);
+            if(command_str.find(dividor) == string::npos) { 
+                readLineByLine(command_str);        // printfile <fileName>
             }
-            else{                                           // printfile (fileName) > (newFileName)
-                redirectFile(command_str);
+            else{                                           
+                redirectFile(command_str);          // printfile <fileName> > <newFileName>
             }
             
         }
         else if(command_prefix.compare("dididothat") == 0) {
-
-
-            // After the command "myuser >>> printfile myfile.txt", which of the following commands will return "Yes"?
-            // a) myuser >>> dididothat "printfile" : YES
-            // b) myuser >>> dididothat "printfile myfile.txt" : NO
-
-            // Add dididothat command to history too!
+            // remove "dididothat" command from the histroy:
+            history.pop_back();
+            // find the first whitespace in the command:
+            int delimiterPosition = command_str.find(delimiter);
+            // get the command to be checked:
+            string commandToCheck = command_str.substr(delimiterPosition + 1, command_str.size() - delimiterPosition - 1);
+            deque<string>::iterator iterator;
+            bool commandFound = false;
+            // iterate over the history to check if the command is there or not:
+            for (iterator = history.begin(); iterator != history.end(); ++iterator) {
+                if(commandToCheck.compare(*iterator) == 0) {    // command is in the history
+                    cout <<"YES\n";         
+                    commandFound = true;
+                    iterator = history.end() - 1;
+                }
+            }
+            if(! commandFound){                                 // command is not in the history
+                cout << "NO\n";             
+            }
         }
         else if(command_str.compare("hellotext") == 0) {
             int c = system("gedit");
-            if(c == 0) {
+            if(c == 0) { 
+                // When the text editor is closed, system() returns 0, so the shell continues to process
                 continue;
             }
-            //// When the text editor is closed, user should be able to continue using this shell.
         }
         else if(command_str.compare("exit") == 0) {
             isterminated = true;
@@ -69,6 +98,7 @@ int main() {
     return 0;
 }
 
+// following method prints the given file line-by-line:
 void readLineByLine(string command) {
     string filename = command.substr(10, command.length() - 9);
     char path[300];
@@ -92,15 +122,16 @@ void readLineByLine(string command) {
     file.close();
 }
 
+// following method copies the given file's content into the provided output file, line-by-line
 void redirectFile(string command) {
     int dividorLocation = command.find(dividor);
-    string firstFilename = command.substr(10, dividorLocation - 9 - 2);
+    string firstFilename = command.substr(10, dividorLocation - 11);
     string secondFilename = command.substr(dividorLocation + 2, command.length() - dividorLocation);
     fstream firstFile;
     firstFile.open(firstFilename);
-    ofstream secondFile(secondFilename, ios::trunc);
+    ofstream secondFile(secondFilename/*, ios::trunc */);
     string line;
-    if(( firstFile.is_open() ) && ( secondFile.is_open() )) {
+    if(firstFile.is_open() && secondFile.is_open()) {
         while(!firstFile.eof()) {
             getline(firstFile, line);
             secondFile << line << endl;
