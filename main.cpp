@@ -14,6 +14,7 @@ bool isterminated = false;          // if the "exit" command runs, the shell ter
 string delimiter = " ";             // separates the command from its arguments
 string dividor = ">";               // separates the file names in "printfile" command
 string username = getenv("USER");   
+bool isValidCommand = false;
 
 void readLineByLine(string pathToFile);
 void redirectFile(string command);
@@ -37,12 +38,9 @@ int main() {
         while(command_str.find_last_of(" ") == 0) {
             command_str = command_str.substr(0, command_str.size()-1);
         }
-        if(command_str.compare("") != 0) {      // if the command is not empty, adds it to the history
-            history.push_back(command_str);
-        }
         // if the command includes a whitespace: we need the first word to determine the type of the command:
         string command_prefix = command_str.substr(0, command_str.find(delimiter));
-        
+        isValidCommand = true;
         if(command_str.compare("listdir") == 0) {
             system("ls");
         }
@@ -50,7 +48,7 @@ int main() {
             system("hostname");     // system("hostnamectl | grep 'hostname'");
         }
         else if(command_str.compare("whatsmyip") == 0) {
-            system("curl ifconfig.me");
+            system("ip r");
             cout << endl;
         }
         else if(command_prefix.compare("printfile") == 0) {       
@@ -63,8 +61,8 @@ int main() {
             
         }
         else if(command_prefix.compare("dididothat") == 0) {
-            // remove "dididothat" command from the histroy:
-            history.pop_back();
+            // do not add "dididothat" command to the histroy:
+            isValidCommand = false;
             // find the first whitespace in the command:
             int delimiterPosition = command_str.find(delimiter);
             // get the command to be checked:
@@ -93,6 +91,12 @@ int main() {
         else if(command_str.compare("exit") == 0) {
             isterminated = true;
             break;
+        }
+        else {
+            isValidCommand = false;
+        }
+        if(isValidCommand) {
+            history.push_back(command_str);     // if the given command was valid and not dididothat, then add it to the history
         }
     }
     return 0;
