@@ -85,6 +85,7 @@ int main() {
             int c = system("gedit");
             if(c == 0) { 
                 // When the text editor is closed, system() returns 0, so the shell continues to process
+                history.push_back(command_str); 
                 continue;
             }
         }
